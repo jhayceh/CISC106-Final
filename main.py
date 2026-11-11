@@ -1,23 +1,199 @@
-from bakery import assert_equal
 from drafter import *
 from dataclasses import dataclass
+import inspect
+
+from chemicals import Hfg, CAS_from_any, Hfs, Hfl, Hfus
+from parse import pt, ptr, primes
+
+
+#CHEMICAL REACTION NAVIGATION
+def hf(chemical: str) -> float or None:
+    try:
+        cas = CAS_from_any(chemical)
+    except:
+        return None
+    solid, liquid, gas = Hfs(cas), Hfl(cas), Hfg(cas)
+    if(solid != None):
+        return solid
+    if(liquid != None):
+        return liquid
+    return gas
+
+def chemical_to_int(chemical : str) -> list[list[int]]:
+    ret = []
+    i = 0
+    while i < len(chemical):
+        coeff = 1
+        atom = chemical[i]
+        if(i < len(chemical) - 1 and chemical[i + 1].isdigit()):
+            coeff = chemical[i+1]
+        if(atom.isalpha() and atom.upper() == atom):
+            if(i < len(chemical) - 1 and chemical[i + 1].isalpha() and chemical[i+1].lower() == chemical[i+1]):
+                atom = chemical[i:i+2]
+                if(i < len(chemical) - 2):
+                    coeff = chemical[i+2]
+                else:
+                    coeff = 1
+        else:
+            i += 1
+            continue
+
+        number = pt[atom]
+        ret.append([number, int(coeff)])
+        i += 1
+    return ret
+
+def int_to_chemical(chem : list[list[int]]) -> str:
+    ret = ""
+    for i in chem:
+        ret += ptr[i[0]]
+        if(i[1] != 1):
+            ret += str(i[1])
+    return ret
+
+def int_to_reaction(reac : list[list[list[int, list[int]]]]) -> str:
+    ret = ""
+    for i in reac[0]:
+        if(i[0] != 1):
+            ret += str(i[0]) + "⋅"
+        ret += int_to_chemical(i[1:])
+        ret += " + "
+    ret = ret[:-2]
+    ret += "-> "
+    for i in reac[1]:
+        if(i[0] != 1):
+            ret += str(i[0]) + "⋅"
+        ret += int_to_chemical(i[1:])
+        ret += " + "
+    return ret[:-3]
+
+def reaction_to_int(reac : str) -> list[list[list[int, list[int]]]]:
+    ret = [[], []]
+    flip = False
+    while(len(reac) > 0):
+        try:
+            chem = reac[:reac.index(" ")]
+            reac = reac[reac.index(" ") + 1:]
+        except:
+            chem = reac
+            reac = ""
+        if("->" in chem):
+            flip = True
+            continue
+        try:
+            coeff = chem[:chem.index("⋅")]
+            chem = chem[chem.index("⋅") + 1:]
+            int_chem = [int(coeff)] + chemical_to_int(chem)
+        except:
+            int_chem = [1] + chemical_to_int(chem)
+
+        if not flip and int_chem != [1]:
+            ret[0].append(int_chem)
+        if flip and int_chem != [1]:
+            ret[1].append(int_chem)
+    return ret
+
+def equation_balanced(reaction) -> bool:
+    if(type(reaction) == type("a")):
+        reaction = reaction_to_int(reaction)
+    reac_mult = 1
+    for i in reaction[0]:
+        mult = i[0]
+        for j in i[1:]:
+            reac_mult *= primes[j[0]] ** (j[1] * mult)
+
+    prod_mult = 1
+    for i in reaction[1]:
+        mult = i[0]
+        for j in i[1:]:
+            prod_mult *= primes[j[0]] ** (j[1] * mult)
+
+    return reac_mult == prod_mult
+
+def reaction_hf(reaction) -> float:
+    if(type(reaction) == type("a")):
+        reaction = reaction_to_int(reaction)
+    hfreac = 0.0
+    for i in reaction[0]:
+        chemical = i[1:]
+        chstr = int_to_chemical(chemical)
+        if(chstr == None):
+            continue
+        hfreac -= hf(chstr)
+
+    for i in reaction[1]:
+        chemical = i[1:]
+        chstr = int_to_chemical(chemical)
+        if(chstr == None):
+            continue
+        hfreac += hf(chstr)
+    
+    return hfreac
+
+
+#MATH
 
 
 
-hide_debug_information()
-set_website_title("Your Drafter Website")
-set_website_framed(False)
 
+#SITE
+
+@dataclass
+class Chemical:
+    formula: str
+    atoms : list[list[int]]
+    atoms : list[list[int]]
+    heat_of_formation : float
 
 @dataclass
 class State:
-    pass
-
+    reaction_equation : list[list[list[int, list[int]]]]
+    display_equation : list[list[int, Chemical]]
+    enthalpy : float
+    t_thresh : float
+    t_room : float
+    reactor_volume : float
+    flow_rates : list[Chemical, float]
 
 @route
-def index(state: State) -> Page:
-    return Page(state, ["Hello World!"])
+def index(state : State):
+    return Page(state, "hello")
 
-assert_equal(index(State()), Page(State(), ["Hello World!"]))
 
-start_server(State())
+
+
+
+
+#VERIFICATION AND PRINT-TESTING:
+test = False
+
+if(test):
+    print(hf("H2O"))
+
+    print(chemical_to_int("CH4"))
+
+    print(int_to_chemical([[6, 2], [1, 4]]))
+
+    print(int_to_reaction(
+        [
+        [ [1, [6, 1], [1, 4]], [2, [8, 2]]],
+        [ [1, [6, 1], [8, 2]], [2, [1, 2], [8, 1]]]
+        ]
+        ))
+
+    print(reaction_to_int("CH4 + 2⋅O2 -> CO2 + 2⋅H2O"))
+
+    print(int_to_reaction(reaction_to_int("CH4 + 2⋅O2 -> CO2 + 2⋅H2O")))
+
+    print(equation_balanced("CH4 + 2⋅O2 -> CO2 + 2⋅H2O"))
+
+    print(equation_balanced(
+        [
+        [ [1, [6, 1], [1, 4]], [2, [8, 2]]],
+        [ [1, [6, 1], [8, 2]], [2, [1, 2], [8, 1]]]
+        ]))
+
+    print(reaction_hf("CH4 + 2⋅O2 -> CO2 + 2⋅H2O"))
+
+print(inspect.getfile(Hfg))
+start_server(State([], [], 0.0, 0.0, 0.0, 0.0, []))
