@@ -1,23 +1,12 @@
+from __future__ import annotations
+
 from drafter import *
 from dataclasses import dataclass
 import inspect
-
-from chemicals import Hfg, CAS_from_any, Hfs, Hfl, Hfus
 from parse import pt, ptr, primes
 
 
 #CHEMICAL REACTION NAVIGATION
-def hf(chemical: str) -> float or None:
-    try:
-        cas = CAS_from_any(chemical)
-    except:
-        return None
-    solid, liquid, gas = Hfs(cas), Hfl(cas), Hfg(cas)
-    if(solid != None):
-        return solid
-    if(liquid != None):
-        return liquid
-    return gas
 
 def chemical_to_int(chemical : str) -> list[list[int]]:
     ret = []
@@ -110,26 +99,6 @@ def equation_balanced(reaction) -> bool:
 
     return reac_mult == prod_mult
 
-def reaction_hf(reaction) -> float:
-    if(type(reaction) == type("a")):
-        reaction = reaction_to_int(reaction)
-    hfreac = 0.0
-    for i in reaction[0]:
-        chemical = i[1:]
-        chstr = int_to_chemical(chemical)
-        if(chstr == None):
-            continue
-        hfreac -= hf(chstr)
-
-    for i in reaction[1]:
-        chemical = i[1:]
-        chstr = int_to_chemical(chemical)
-        if(chstr == None):
-            continue
-        hfreac += hf(chstr)
-    
-    return hfreac
-
 
 #MATH
 
@@ -195,5 +164,4 @@ if(test):
 
     print(reaction_hf("CH4 + 2⋅O2 -> CO2 + 2⋅H2O"))
 
-print(inspect.getfile(Hfg))
 start_server(State([], [], 0.0, 0.0, 0.0, 0.0, []))
