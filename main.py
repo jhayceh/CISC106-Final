@@ -11,6 +11,17 @@ class Chemical:
     heat_of_formation : float
 
 def chemical_to_int(chemical : str) -> list[list[int]]:
+    '''
+    Function that takes a string representing a chemical formula and converts
+    it into a compound integer representation.
+
+    Params:
+        chemical (str): String representing a chemical formula (like CH4)
+
+    Returns:
+        compount list of integers representing atoms and quantities in chemical
+        (ex CH4 -> [[6, 1], [1, 4]])
+    '''
     ret = []
     i = 0
     while i < len(chemical):
@@ -35,6 +46,17 @@ def chemical_to_int(chemical : str) -> list[list[int]]:
     return ret
 
 def int_to_chemical(chem : list[list[int]]) -> str:
+    '''
+    Function that takes a conpound list of integers representing a chemical formula and converts
+    it into a string.
+
+    Params:
+        chemical (list[list[int]]): list of ints representing a chemical formula ([[6, 1], [1, 4]])
+
+    Returns:
+        string representing chemical
+        (ex [[6, 1], [1, 4]] -> CH4)
+    '''
     ret = ""
     for i in chem:
         ret += ptr[i[0]]
@@ -43,6 +65,17 @@ def int_to_chemical(chem : list[list[int]]) -> str:
     return ret
 
 def int_to_reaction(reac : list[list[list[int, list[int]]]]) -> str:
+    """
+    Function that takes a compound list of ints and turns it into a string
+    representing a reaction
+
+    Params:
+        reac (list[list[list[int, list[int]]]]): reaction as a list
+
+    Returns:
+        reaction as a string
+        """
+    
     ret = ""
     for i in reac[0]:
         if(i[0] != 1):
@@ -59,6 +92,16 @@ def int_to_reaction(reac : list[list[list[int, list[int]]]]) -> str:
     return ret[:-3]
 
 def reaction_to_int(reac : str) -> list[list[list[int, list[int]]]]:
+    """
+    Function that takes a string and turns it into a compound list of ints
+    representing a reaction
+
+    Params:
+        reac (str): reaction as a list
+
+    Returns:
+        reaction as a list of list of list of int and list of ints representing a reaction
+        """
     ret = [[], []]
     flip = False
     while(len(reac) > 0):
@@ -85,6 +128,16 @@ def reaction_to_int(reac : str) -> list[list[list[int, list[int]]]]:
     return ret
 
 def reaction_to_chemicals(reac : str) -> list[list[int, Chemical]]:
+    '''
+    Takes a reaction and turns it into a list of chemicals because
+    I'm required to have a list of dataclass instances.
+
+    Params:
+        reac (str): string representing reaction
+
+    Returns:
+        List of chemical specices as a list of dataclass instances
+    '''
     ret = [[], []]
     flip = False
     while(len(reac) > 0):
@@ -113,6 +166,17 @@ def reaction_to_chemicals(reac : str) -> list[list[int, Chemical]]:
     return ret
 
 def equation_balanced(reaction) -> bool:
+    """ 
+    Function that checks if a reaction is balanced
+
+    Params:
+        reaction (str or list[list[list[int, list[int]]]]): the reaction in
+        string or compound list format
+
+    Returns:
+        True if the reaction is balanced, else False
+    """
+    
     if(type(reaction) == type("a")):
         reaction = reaction_to_int(reaction)
     reac_mult = 1
@@ -129,8 +193,6 @@ def equation_balanced(reaction) -> bool:
 
     return reac_mult == prod_mult
 
-
-#MATH
 
 
 
@@ -159,6 +221,9 @@ class State:
 
 @route
 def index(state : State):
+    """
+    Route creating home page of the site
+    """
     return Page(state,
                 [
                     Header("Chemical Reactor Enthalpy Calculator"),
@@ -167,6 +232,9 @@ def index(state : State):
 
 @route
 def builder(state : State):
+    """
+    Route creating reaction builder page
+    """
     return Page(state,
                 [
                     "Input your reaction:\n\n",
@@ -178,6 +246,9 @@ def builder(state : State):
 
 @route
 def creac(state : State, left, right):
+    """
+    Route creating route confirmation page
+    """
     reaction = left + " -> " + right
     i = 0;
     while i < len(reaction):
@@ -198,8 +269,11 @@ def creac(state : State, left, right):
 
 @route
 def ent(state : State):
+    """
+    Route creating enthalpy input page
+    """
     return Page(state, [
-        "Input Enthalpy: \n\n",
+        "Input Enthalpy in kJ per mol reaction: \n\n",
         TextBox("h"),
         "\n",
         Button("Continue", "save_enthalpy")
@@ -207,6 +281,9 @@ def ent(state : State):
 
 @route
 def kinetics_data(state : State):
+    """
+    Route creating kinetics data input page
+    """
     rint = reaction_to_int(state.reaction_equation)
     pagec = ["Kinetics Equation Data:\n\nRate = k * ", "\nk:", TextBox("k")]
     for v, i in enumerate(rint[0]):
@@ -222,6 +299,9 @@ def kinetics_data(state : State):
 
 @route
 def kinfin(state : State, k : str, che0 : str = "", che1 : str = "", che2 : str = "", che3 : str = "", che4 : str = "", che5 : str = "", che6 : str = "", che7 : str = ""):
+    """
+    Route handling kinetics data
+    """
     coeff = []
     unsc = [k, che0, che1, che2, che3, che4, che5, che6, che7]
     for i in unsc:
@@ -239,7 +319,9 @@ def kinfin(state : State, k : str, che0 : str = "", che1 : str = "", che2 : str 
 
 #REACTOR MODEL
 def reactant_data(state):
-    # list of (formula, stoich coefficient, reaction order) for each reactant
+    '''
+    Function that associates kinetic constants with their chemicals
+    '''
     rint = reaction_to_int(state.reaction_equation)
     data = []
     for v, chem in enumerate(rint[0]):
@@ -248,27 +330,36 @@ def reactant_data(state):
     return data
 
 def effective_limit(state) -> float:
+    '''
+    Function that determines which temperature limit to use based on
+    reaction enthalpy direction and FoS
+    '''
     sf = max(state.safety_factor, 1.0)
     if state.enthalpy < 0:
         return state.t_room + (state.t_max - state.t_room) / sf
     return state.t_room - (state.t_room - state.t_min) / sf
 
 def temp_exceeds(state, T : float) -> bool:
+    '''
+    Function that checks if the temperature already exceeds the
+    threshhold value
+    '''
     lim = effective_limit(state)
     if state.enthalpy < 0:
         return T > lim
     return T < lim
 
 def simulate(state, s : float, steps : int = 500, check : bool = True):
-    # RK4 integration of  y = [T, C1, C2, ...]  out to 10 residence times.
-    # returns (times, temps, hit_limit). If check is True, stops early once the limit is hit.
+    """
+    Function that actually handles the simulation of the reactor environment
+    """
     species = reactant_data(state)
     k = state.kin[0]
     V = state.reactor_volume
     q = state.flow_q
     rcp = state.rho_cp
     ua = state.ua
-    dH = state.enthalpy * 1000.0          # J/mol
+    dH = state.enthalpy * 1000.0
     T_amb = state.t_room
     t_end = 10.0 * V / q
     dt = t_end / steps
@@ -276,6 +367,9 @@ def simulate(state, s : float, steps : int = 500, check : bool = True):
     n_sp = len(species)
 
     def deriv(y):
+        '''
+        subfunction handling the math with the kinetics equation
+        '''
         C = y[1:]
         r = k
         for j in range(n_sp):
@@ -313,11 +407,14 @@ def simulate(state, s : float, steps : int = 500, check : bool = True):
     return times, temps, hit
 
 def find_max_s(state) -> float:
-    # largest s (mol/s) that keeps T inside the limit. Returns -1.0 if no limit is ever reached.
+    """
+    Function that finds the largest s (mol/s) that keeps T inside the limit.
+    Returns -1.0 if no limit is ever reached.
+    """
     if state.enthalpy == 0:
         return -1.0
     if simulate(state, 0.0)[2]:
-        return 0.0                        # limit already violated with no reaction at all
+        return 0.0                        
     lo = 0.0
     hi = 1e-9
     found = False
@@ -329,7 +426,7 @@ def find_max_s(state) -> float:
         hi *= 4.0
     if not found:
         return -1.0
-    for _ in range(30):                   # bisection
+    for _ in range(30):                  
         mid = (lo + hi) / 2.0
         if simulate(state, mid)[2]:
             hi = mid
@@ -338,6 +435,9 @@ def find_max_s(state) -> float:
     return lo
 
 def text_graph(state, times, temps) -> str:
+    """
+    Function that creates a text graph of the function
+    """
     lim = effective_limit(state)
     lo = min(min(temps), lim, state.t_room)
     hi = max(max(temps), lim, state.t_room)
@@ -357,7 +457,9 @@ def text_graph(state, times, temps) -> str:
 
 @route
 def save_enthalpy(state : State, h : str = ""):
-    # target of the Continue button on the enthalpy page
+    """
+    Route called from the continue button on the enthalpy page that saves enthalpy data
+    """
     try:
         state.enthalpy = float(h)
     except ValueError:
@@ -367,6 +469,10 @@ def save_enthalpy(state : State, h : str = ""):
 
 @route
 def reactor_info(state : State):
+    """
+    Route that constructs the page to input reactor and reaction info
+    """
+    
     return Page(state, [
         "Reactor Information\n\n",
         "Reactor volume (L): ", TextBox("volume"),
@@ -383,6 +489,10 @@ def reactor_info(state : State):
 @route
 def reactor_save(state : State, volume : str = "", flow : str = "", troom : str = "", tmax : str = "",
                  tmin : str = "", sf : str = "", rhocp : str = "", ua : str = ""):
+    """
+    Route function that saves reactor data inputted in reactor_info
+    """
+
     try:
         v = float(volume)
         q = float(flow)
@@ -409,12 +519,14 @@ def reactor_save(state : State, volume : str = "", flow : str = "", troom : str 
     state.safety_factor = safety
     state.rho_cp = rcp
     state.ua = ua_val
-    # the threshold the reaction pushes us toward
     state.t_thresh = t_max if state.enthalpy < 0 else t_min
     return results(state)
 
 @route
 def results(state : State):
+    """
+    Route function that constructs the results page
+    """
     if len(state.kin) == 0 or state.reaction_equation == "" or state.reactor_volume <= 0:
         return Page(state, ["Some inputs are missing. Please start over.\n", Button("Restart", "restart")])
 
@@ -451,6 +563,10 @@ def results(state : State):
 
 @route
 def graph(state : State):
+    """
+    Route function that constructs the graph page
+    """
+    
     if len(state.kin) == 0 or state.reactor_volume <= 0 or state.enthalpy == 0:
         return Page(state, ["Nothing to graph yet.\n", Button("Restart", "restart")])
     s = max(state.max_s, 0.0)
@@ -473,6 +589,10 @@ def graph(state : State):
 
 @route
 def restart(state : State):
+    """
+    Function that returns state to what it was at the start of the program and
+    reruns the program
+    """
     state.reaction_equation = ""
     state.involved_species = []
     state.kin = []
@@ -522,6 +642,9 @@ if(test):
         ]))
 
     print(reaction_hf("CH4 + 2⋅O2 -> CO2 + 2⋅H2O"))
+
+
+#PERIODIC TABLE AND PRIMES
 
 pt = {
     # Period 1
