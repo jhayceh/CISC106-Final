@@ -133,20 +133,21 @@ def chemical_to_int(chemical : str) -> list[list[int]]:
         if(atom.isalpha() and atom.upper() == atom):
             if(i < len(chemical) - 1 and chemical[i + 1].isalpha() and chemical[i+1].lower() == chemical[i+1]):
                 atom = chemical[i:i+2]
-                if(i < len(chemical) - 2):
+                if(i < len(chemical) - 2 and chemical[i + 2].isdigit()):
                     coeff = chemical[i+2]
                 else:
                     coeff = 1
         else:
             i += 1
             continue
-
+        print(atom, coeff)
         number = pt[atom]
         ret.append([number, int(coeff)])
         i += 1
     return ret
 
 assert_equals(chemical_to_int("CH4"), [[6, 1], [1, 4]])
+print(chemical_to_int("NaOH"))
 
 def int_to_chemical(chem : list[list[int]]) -> str:
     '''
@@ -236,7 +237,6 @@ def reaction_to_int(reac : str) -> list[list[list[int, list[int]]]]:
     return ret
 
 assert_equals(reaction_to_int("CH4 -> CH4"), [[[1, [6, 1], [1, 4]]], [[1, [6, 1], [1, 4]]]])
-
 
 
 
@@ -354,7 +354,7 @@ def builder(state : State):
     """
     return Page(state,
                 [
-                    "Input your reaction:\n\n",
+                    "Input your reaction:\nFormat: \t'<Chemical 1> + <Chemical 2> + ...'\n\tsuch as 'CH4 + 2O2'\n",
                     "Reactants: ", TextBox("left"),
                     "\nProducts: ", TextBox("right"),
                     "\n", Button("Confirm", "creac")
@@ -369,7 +369,7 @@ def creac(state : State, left, right):
     reaction = left + " -> " + right
     i = 0;
     while i < len(reaction):
-        if(reaction[i].isdigit() and reaction[i+1].isalpha() and (i == 0 or reaction[i-1].isdigit() or reaction[i-1] == " ")):
+        if(reaction[i].isdigit() and i < len(reaction) - 1 and reaction[i+1].isalpha() and (i == 0 or reaction[i-1].isdigit() or reaction[i-1] == " ")):
             reaction = reaction[:i+1] + "⋅" + reaction[i+1:]
             i += 1
         i += 1
@@ -387,6 +387,8 @@ def creac(state : State, left, right):
 
 @route
 def ent(state : State):
+    if(not equation_balanced(state.reaction_equation)):
+        return not_balanced(state)
     chems_int = reaction_to_int(state.reaction_equation)
     for i in chems_int[0]:
         chemical = i[1:]
@@ -403,6 +405,10 @@ def ent(state : State):
         "\n",
         Button("Continue", "save_enthalpy"), Button("I have heats of formation", "heat_form")
         ])
+
+def not_balanced(state : State):
+    return Page(state, ["This equation is not balanced.\n",
+                        Button("Back to Builder", "builder")])
 
 @route
 def heat_form(state : State):
