@@ -108,6 +108,8 @@ class Chemical:
     formula: str
     atoms : list[list[int]]
     heat_of_formation : float
+    reactant : bool
+    coeff : int
 
 def chemical_to_int(chemical : str) -> list[list[int]]:
     '''
@@ -385,6 +387,13 @@ def creac(state : State, left, right):
 
 @route
 def ent(state : State):
+    chems_int = reaction_to_int(state.reaction_equation)
+    for i in chems_int[0]:
+        chemical = i[1:]
+        state.involved_species.append(Chemical(int_to_chemical(chemical), chemical, 0.0, True, i[0]))
+    for i in chems_int[1]:
+        chemical = i[1:]
+        state.involved_species.append(Chemical(int_to_chemical(chemical), chemical, 0.0, False, i[0]))
     """
     Route creating enthalpy input page
     """
@@ -392,8 +401,38 @@ def ent(state : State):
         "Input Enthalpy in kJ per mol reaction: \n\n",
         TextBox("h"),
         "\n",
-        Button("Continue", "save_enthalpy")
+        Button("Continue", "save_enthalpy"), Button("I have heats of formation", "heat_form")
         ])
+
+@route
+def heat_form(state : State):
+    """
+    Route that collects heat of formation data from the user.
+    """
+    contents = ["Heats of Formation Input: \n"]
+    for i in range(len(state.involved_species)):
+        contents.append(state.involved_species[i].formula + ": ")
+        contents.append(TextBox("chem" + str(i)))
+        contents.append("\n")
+
+    contents.append(Button("Continue", "save_hf"))
+
+    return Page(state, contents)
+
+@route
+def save_hf(state : State, chem0 : str = "", chem1 : str = "", chem2 : str = "", chem3 : str = "", chem4 : str = "",
+            chem5 : str = "", chem6 : str = "", chem7 : str = "", chem8 : str = "", chem9 : str = "", chem10 : str = "",
+            chem11 : str = "", chem12 : str = ""):
+    chems = [chem0, chem1, chem2, chem3, chem4, chem5, chem6, chem7, chem8, chem9, chem10, chem11, chem12]
+    ret = 0.0
+    for i in range(len(state.involved_species)):
+        hf_mol = float(chems[i])
+        chem = state.involved_species[i]
+        mult = -1 if chem.reactant else 1
+        ret += mult * hf_mol * chem.coeff
+    state.enthalpy = ret
+    return kinetics_data(state)
+        
 
 @route
 def kinetics_data(state : State):
@@ -582,6 +621,7 @@ def save_enthalpy(state : State, h : str = ""):
         return Page(state, ["Enthalpy must be a number (kJ/mol of reaction as written, negative = exothermic).\n",
                             Button("Back", "ent")])
     return kinetics_data(state)
+
 
 @route
 def reactor_info(state : State):
