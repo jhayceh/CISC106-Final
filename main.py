@@ -2,6 +2,8 @@ from drafter import *
 from dataclasses import dataclass
 import inspect
 from bakery import assert_equal as assert_equals
+import builtins
+import math
 
 #PERIODIC TABLE AND PRIMES
 
@@ -95,6 +97,54 @@ primes = [
     1087, 1091, 1093, 1097, 1103, 1109, 1117, 1123, 1129, 1151,
     1153, 1163, 1171, 1181, 1187, 1193, 1201, 1213, 1217, 1223
 ]
+
+
+def sround(n : float, sf : int = -1, useSF : bool = True) -> float:
+    '''
+    Function that rounds an inputted number to a number of significant figures.
+    Overrides builtins round while still giving builtins round functionality.
+
+    Params:
+        n: the number to round
+        sf: the number of sig figs
+        useSF: whether or not to treat sf as sig figs or as a number of decimals.
+            By default, this value is true (use sig figs instead of decimals)
+
+    Returns:
+        n, rounded to the appropriate number of sig figs
+    '''
+    if(sf == -1):
+        return builtins.round(n)
+
+    if not useSF:
+        return builtins.round(n, sf)
+    
+    f = 1
+    while(n > 10 ** sf):
+        n /= 10
+        f /= 10
+    while(n < 10 ** (sf - 1)):
+        n *= 10
+        f *= 10
+    n = builtins.round(n)
+    return n / f
+
+
+def print_scientific(n : float, sf : int = -1) -> str:
+    '''
+    Function that takes a number and a number of sig figs, and decides whether
+    or not to return the value in regular notation or scientific notation.
+    
+    '''
+    b = int(math.log10(n))
+    a = sround(n / (10 ** b), sf)
+
+    if(b >= sf + 1):
+        return (str(a) + "⋅e+" + str(b))
+    elif (b <= -1 * sf):
+        return (str(a) + "⋅e+" + str(b))
+    else:
+        return str(a)
 
 
 
@@ -198,6 +248,32 @@ def int_to_reaction(reac : list[list[list[int, list[int]]]]) -> str:
     return ret[:-3]
 
 assert_equals(int_to_reaction([[[1, [6, 1], [1, 4]]], [[1, [6, 1], [1, 4]]]]), "CH4 -> CH4")
+
+
+def reaction_format(reac : str) -> str:
+    '''
+    Function that properly formats a reaction equation with the correct
+    whitespace.
+    '''
+    
+    i = 0
+    while(i < len(reac)):
+        if(reac[i] == " "):
+            reac = reac[:i] + reac[i+1:] if i < len(reac) - 1 else reac[:i]
+            continue
+        i += 1
+    i = 1
+    while(i < len(reac)):
+        if(reac[i] == "+"):
+            print(reac)
+            reac = reac[:i] + " + " + reac[i+1:]
+            i += 2
+        if(reac[i-1:i+1] == "->"):
+            reac = reac[:i-1] + " -> " + reac[i+1:]
+            i += 2
+            
+        i += 1
+    return reac
 
 
 def reaction_to_int(reac : str) -> list[list[list[int, list[int]]]]:
@@ -366,7 +442,7 @@ def creac(state : State, left, right):
     """
     Route creating route confirmation page
     """
-    reaction = left + " -> " + right
+    reaction = reaction_format(left + " -> " + right)
     i = 0;
     while i < len(reaction):
         if(reaction[i].isdigit() and i < len(reaction) - 1 and reaction[i+1].isalpha() and (i == 0 or reaction[i-1].isdigit() or reaction[i-1] == " ")):
@@ -714,7 +790,7 @@ def results(state : State):
     else:
         content.append("Maximum safe feed rates:\n")
         for formula, nu, order in reactant_data(state):
-            content.append(formula + ": " + str(nu * state.max_s) + " mol/s\n")
+            content.append(formula + ": " + print_scientific(nu * state.max_s, 4) + " mol/s\n")
         times, temps, hit = simulate(state, state.max_s, 500, False)
         if state.enthalpy < 0:
             content.append("\nPeak reactor temperature at these rates: " + str(round(max(temps), 2)) + " C\n\n")
