@@ -7,6 +7,9 @@ import math
 
 #PERIODIC TABLE AND PRIMES
 
+set_website_style("98")
+hide_debug_information()
+
 pt = {
     # Period 1
     "H": 1, "He": 2,
@@ -850,7 +853,6 @@ def restart(state : State):
     return index(state)
 
 
-
 #VERIFICATION AND PRINT-TESTING:
 test = False
 
@@ -881,8 +883,6 @@ if(test):
         ]))
 
     print(reaction_hf("CH4 + 2⋅O2 -> CO2 + 2⋅H2O"))
-
-
 
 
 start_server(State("", [], [], 0.0, 0.0, 0.0, 0.0, []))
