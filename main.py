@@ -4,10 +4,11 @@ import inspect
 from bakery import assert_equal as assert_equals
 import builtins
 import math
+import inspect
 
 #PERIODIC TABLE AND PRIMES
 
-set_website_style("98")
+set_website_style("terminal")
 hide_debug_information()
 
 pt = {
@@ -425,6 +426,22 @@ def index(state : State):
                     Button("Start", "builder")
                 ])
 
+def error(state : State, route : str, message : str):
+    n_args = len(inspect.signature(getattr(__import__("__main__"), route)).parameters)
+    print(n_args)
+    if (n_args == 1):
+        return Page(state,
+                [
+                    "Error encountered: " + message + "\n\n",
+                    Button("Continue", route)
+                ])
+    else:
+        return Page(state,
+                [
+                    "Error encountered: " + message + "\n\n",
+                    Button("Continue", "index")
+                ])
+
 @route
 def builder(state : State):
     """
@@ -445,45 +462,53 @@ def creac(state : State, left, right):
     """
     Route creating route confirmation page
     """
-    reaction = reaction_format(left + " -> " + right)
-    i = 0;
-    while i < len(reaction):
-        if(reaction[i].isdigit() and i < len(reaction) - 1 and reaction[i+1].isalpha() and (i == 0 or reaction[i-1].isdigit() or reaction[i-1] == " ")):
-            reaction = reaction[:i+1] + "⋅" + reaction[i+1:]
+    try:
+        reaction = reaction_format(left + " -> " + right)
+        i = 0;
+        while i < len(reaction):
+            if(reaction[i].isdigit() and i < len(reaction) - 1 and reaction[i+1].isalpha() and (i == 0 or reaction[i-1].isdigit() or reaction[i-1] == " ")):
+                reaction = reaction[:i+1] + "⋅" + reaction[i+1:]
+                i += 1
             i += 1
-        i += 1
-    rint = reaction_to_int(reaction)
-    state.reaction_equation = reaction
-    return Page(state,
-                [
-                    "Please confirm this is your recation:\n",
-                    reaction,
-                    "\n",
-                    Button("Back", "builder"), Button("Continue", "ent")
-                    ]
-                )
+        rint = reaction_to_int(reaction)
+        state.reaction_equation = reaction
+        return Page(state,
+                    [
+                        "Please confirm this is your recation:\n",
+                        reaction,
+                        "\n",
+                        Button("Back", "builder"), Button("Continue", "ent")
+                        ]
+                    )
+
+    except Exception as e:
+        return error(state, inspect.currentframe().f_code.co_name, str(e))
 
 
 @route
 def ent(state : State):
-    if(not equation_balanced(state.reaction_equation)):
-        return not_balanced(state)
-    chems_int = reaction_to_int(state.reaction_equation)
-    for i in chems_int[0]:
-        chemical = i[1:]
-        state.involved_species.append(Chemical(int_to_chemical(chemical), chemical, 0.0, True, i[0]))
-    for i in chems_int[1]:
-        chemical = i[1:]
-        state.involved_species.append(Chemical(int_to_chemical(chemical), chemical, 0.0, False, i[0]))
-    """
-    Route creating enthalpy input page
-    """
-    return Page(state, [
-        "Input Enthalpy in kJ per mol reaction: \n\n",
-        TextBox("h"),
-        "\n",
-        Button("Continue", "save_enthalpy"), Button("I have heats of formation", "heat_form")
-        ])
+    try:
+        if(not equation_balanced(state.reaction_equation)):
+            return not_balanced(state)
+        chems_int = reaction_to_int(state.reaction_equation)
+        for i in chems_int[0]:
+            chemical = i[1:]
+            state.involved_species.append(Chemical(int_to_chemical(chemical), chemical, 0.0, True, i[0]))
+        for i in chems_int[1]:
+            chemical = i[1:]
+            state.involved_species.append(Chemical(int_to_chemical(chemical), chemical, 0.0, False, i[0]))
+        """
+        Route creating enthalpy input page
+        """
+        return Page(state, [
+            "Input Enthalpy in kJ per mol reaction: \n\n",
+            TextBox("h"),
+            "\n",
+            Button("Continue", "save_enthalpy"), Button("I have heats of formation", "heat_form")
+            ])
+
+    except Exception as e:
+        return error(state, inspect.currentframe().f_code.co_name, str(e))
 
 def not_balanced(state : State):
     return Page(state, ["This equation is not balanced.\n",
@@ -494,65 +519,79 @@ def heat_form(state : State):
     """
     Route that collects heat of formation data from the user.
     """
-    contents = ["Heats of Formation Input: \n"]
-    for i in range(len(state.involved_species)):
-        contents.append(state.involved_species[i].formula + ": ")
-        contents.append(TextBox("chem" + str(i)))
-        contents.append("\n")
+    try:
+        contents = ["Heats of Formation Input: \n"]
+        for i in range(len(state.involved_species)):
+            contents.append(state.involved_species[i].formula + ": ")
+            contents.append(TextBox("chem" + str(i)))
+            contents.append("\n")
 
-    contents.append(Button("Continue", "save_hf"))
+        contents.append(Button("Continue", "save_hf"))
 
-    return Page(state, contents)
+        return Page(state, contents)
+
+    except Exception as e:
+        return error(state, inspect.currentframe().f_code.co_name, str(e))
 
 @route
 def save_hf(state : State, chem0 : str = "", chem1 : str = "", chem2 : str = "", chem3 : str = "", chem4 : str = "",
             chem5 : str = "", chem6 : str = "", chem7 : str = "", chem8 : str = "", chem9 : str = "", chem10 : str = "",
             chem11 : str = "", chem12 : str = ""):
-    chems = [chem0, chem1, chem2, chem3, chem4, chem5, chem6, chem7, chem8, chem9, chem10, chem11, chem12]
-    ret = 0.0
-    for i in range(len(state.involved_species)):
-        hf_mol = float(chems[i])
-        chem = state.involved_species[i]
-        mult = -1 if chem.reactant else 1
-        ret += mult * hf_mol * chem.coeff
-    state.enthalpy = ret
-    return kinetics_data(state)
-        
+    try:
+        chems = [chem0, chem1, chem2, chem3, chem4, chem5, chem6, chem7, chem8, chem9, chem10, chem11, chem12]
+        ret = 0.0
+        for i in range(len(state.involved_species)):
+            hf_mol = float(chems[i])
+            chem = state.involved_species[i]
+            mult = -1 if chem.reactant else 1
+            ret += mult * hf_mol * chem.coeff
+        state.enthalpy = ret
+        return kinetics_data(state)
+
+    except Exception as e:
+        return error(state, inspect.currentframe().f_code.co_name, str(e))
 
 @route
 def kinetics_data(state : State):
     """
     Route creating kinetics data input page
     """
-    rint = reaction_to_int(state.reaction_equation)
-    pagec = ["Kinetics Equation Data:\n\nRate = k * ", "\nk:", TextBox("k")]
-    for v, i in enumerate(rint[0]):
-        crep = (int_to_chemical(i[1:]))
-        pagec[0] += "[" + crep + "]^n"
-        if(v != len(rint) - 1):
-            pagec[0] += " * "
-        pagec.append("\nn for " + crep + ":")
-        pagec.append(TextBox("che" + str(v)))
-    pagec.append("\n\n")
-    pagec.append(Button("Go", "kinfin"))                
-    return Page(state, pagec)
+    try:
+        rint = reaction_to_int(state.reaction_equation)
+        pagec = ["Kinetics Equation Data:\n\nRate = k * ", "\nk:", TextBox("k")]
+        for v, i in enumerate(rint[0]):
+            crep = (int_to_chemical(i[1:]))
+            pagec[0] += "[" + crep + "]^n"
+            if(v != len(rint) - 1):
+                pagec[0] += " * "
+            pagec.append("\nn for " + crep + ":")
+            pagec.append(TextBox("che" + str(v)))
+        pagec.append("\n\n")
+        pagec.append(Button("Go", "kinfin"))                
+        return Page(state, pagec)
+    
+    except Exception as e:
+        return error(state, inspect.currentframe().f_code.co_name, str(e))
 
 @route
 def kinfin(state : State, k : str, che0 : str = "", che1 : str = "", che2 : str = "", che3 : str = "", che4 : str = "", che5 : str = "", che6 : str = "", che7 : str = ""):
     """
     Route handling kinetics data
     """
-    coeff = []
-    unsc = [k, che0, che1, che2, che3, che4, che5, che6, che7]
-    for i in unsc:
-        if(i != ""):
-            coeff.append(i)
-    fcoeff = []
-    for i in coeff:
-        fcoeff.append(float(i))
-    state.kin = fcoeff
-    return reactor_info(state)
+    try:
+        coeff = []
+        unsc = [k, che0, che1, che2, che3, che4, che5, che6, che7]
+        for i in unsc:
+            if(i != ""):
+                coeff.append(i)
+        fcoeff = []
+        for i in coeff:
+            fcoeff.append(float(i))
+        state.kin = fcoeff
+        return reactor_info(state)
 
+    except Exception as e:
+        return error(state, inspect.currentframe().f_code.co_name, str(e))
 
 
 
@@ -562,135 +601,159 @@ def reactant_data(state):
     '''
     Function that associates kinetic constants with their chemicals
     '''
-    rint = reaction_to_int(state.reaction_equation)
-    data = []
-    for v, chem in enumerate(rint[0]):
-        order = state.kin[v + 1] if v + 1 < len(state.kin) else 1.0
-        data.append((int_to_chemical(chem[1:]), chem[0], order))
-    return data
+    try:
+        rint = reaction_to_int(state.reaction_equation)
+        data = []
+        for v, chem in enumerate(rint[0]):
+            order = state.kin[v + 1] if v + 1 < len(state.kin) else 1.0
+            data.append((int_to_chemical(chem[1:]), chem[0], order))
+        return data
+
+    except Exception as e:
+        return error(state, inspect.currentframe().f_code.co_name, str(e))
 
 def effective_limit(state) -> float:
     '''
     Function that determines which temperature limit to use based on
     reaction enthalpy direction and FoS
     '''
-    sf = max(state.safety_factor, 1.0)
-    if state.enthalpy < 0:
-        return state.t_room + (state.t_max - state.t_room) / sf
-    return state.t_room - (state.t_room - state.t_min) / sf
+    try:
+        sf = max(state.safety_factor, 1.0)
+        if state.enthalpy < 0:
+            return state.t_room + (state.t_max - state.t_room) / sf
+        return state.t_room - (state.t_room - state.t_min) / sf
+
+    except Exception as e:
+        return error(state, inspect.currentframe().f_code.co_name, str(e))
 
 def temp_exceeds(state, T : float) -> bool:
     '''
     Function that checks if the temperature already exceeds the
     threshhold value
     '''
-    lim = effective_limit(state)
-    if state.enthalpy < 0:
-        return T > lim
-    return T < lim
+    try:
+        lim = effective_limit(state)
+        if state.enthalpy < 0:
+            return T > lim
+        return T < lim
+
+    except Exception as e:
+        return error(state, inspect.currentframe().f_code.co_name, str(e))
 
 def simulate(state, s : float, steps : int = 500, check : bool = True):
     """
     Function that actually handles the simulation of the reactor environment
     """
-    species = reactant_data(state)
-    k = state.kin[0]
-    V = state.reactor_volume
-    q = state.flow_q
-    rcp = state.rho_cp
-    ua = state.ua
-    dH = state.enthalpy * 1000.0
-    T_amb = state.t_room
-    t_end = 10.0 * V / q
-    dt = t_end / steps
-    cin = [sp[1] * s / q for sp in species]
-    n_sp = len(species)
+    try:
+        species = reactant_data(state)
+        k = state.kin[0]
+        V = state.reactor_volume
+        q = state.flow_q
+        rcp = state.rho_cp
+        ua = state.ua
+        dH = state.enthalpy * 1000.0
+        T_amb = state.t_room
+        t_end = 10.0 * V / q
+        dt = t_end / steps
+        cin = [sp[1] * s / q for sp in species]
+        n_sp = len(species)
 
-    def deriv(y):
-        '''
-        subfunction handling the math with the kinetics equation
-        '''
-        C = y[1:]
-        r = k
-        for j in range(n_sp):
-            c = max(C[j], 0.0)
-            n = species[j][2]
-            if n < 0 and c <= 0:
-                r = 0.0
-            elif n != 0:
-                r *= c ** n
-        dC = []
-        for j in range(n_sp):
-            dC.append((cin[j] - C[j]) * q / V - species[j][1] * r)
-        dT = (q * rcp * (T_amb - y[0]) + (-dH) * r * V - ua * (y[0] - T_amb)) / (rcp * V)
-        return [dT] + dC
+        def deriv(y):
+            '''
+            subfunction handling the math with the kinetics equation
+            '''
+            C = y[1:]
+            r = k
+            for j in range(n_sp):
+                c = max(C[j], 0.0)
+                n = species[j][2]
+                if n < 0 and c <= 0:
+                    r = 0.0
+                elif n != 0:
+                    r *= c ** n
+            dC = []
+            for j in range(n_sp):
+                dC.append((cin[j] - C[j]) * q / V - species[j][1] * r)
+            dT = (q * rcp * (T_amb - y[0]) + (-dH) * r * V - ua * (y[0] - T_amb)) / (rcp * V)
+            return [dT] + dC
 
-    y = [T_amb] + [0.0] * n_sp
-    times = [0.0]
-    temps = [T_amb]
-    hit = temp_exceeds(state, T_amb)
-    if check and hit:
-        return times, temps, True
-    size = len(y)
-    for step in range(steps):
-        k1 = deriv(y)
-        k2 = deriv([y[i] + 0.5 * dt * k1[i] for i in range(size)])
-        k3 = deriv([y[i] + 0.5 * dt * k2[i] for i in range(size)])
-        k4 = deriv([y[i] + dt * k3[i] for i in range(size)])
-        y = [y[i] + dt / 6.0 * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]) for i in range(size)]
-        times.append((step + 1) * dt)
-        temps.append(y[0])
-        if temp_exceeds(state, y[0]):
-            hit = True
-            if check:
-                return times, temps, True
-    return times, temps, hit
+        y = [T_amb] + [0.0] * n_sp
+        times = [0.0]
+        temps = [T_amb]
+        hit = temp_exceeds(state, T_amb)
+        if check and hit:
+            return times, temps, True
+        size = len(y)
+        for step in range(steps):
+            k1 = deriv(y)
+            k2 = deriv([y[i] + 0.5 * dt * k1[i] for i in range(size)])
+            k3 = deriv([y[i] + 0.5 * dt * k2[i] for i in range(size)])
+            k4 = deriv([y[i] + dt * k3[i] for i in range(size)])
+            y = [y[i] + dt / 6.0 * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]) for i in range(size)]
+            times.append((step + 1) * dt)
+            temps.append(y[0])
+            if temp_exceeds(state, y[0]):
+                hit = True
+                if check:
+                    return times, temps, True
+        return times, temps, hit
+    
+    except Exception as e:
+        return error(state, inspect.currentframe().f_code.co_name, str(e))
 
 def find_max_s(state) -> float:
     """
     Function that finds the largest s (mol/s) that keeps T inside the limit.
     Returns -1.0 if no limit is ever reached.
     """
-    if state.enthalpy == 0:
-        return -1.0
-    if simulate(state, 0.0)[2]:
-        return 0.0                        
-    lo = 0.0
-    hi = 1e-9
-    found = False
-    for _ in range(60):
-        if simulate(state, hi)[2]:
-            found = True
-            break
-        lo = hi
-        hi *= 4.0
-    if not found:
-        return -1.0
-    for _ in range(30):                  
-        mid = (lo + hi) / 2.0
-        if simulate(state, mid)[2]:
-            hi = mid
-        else:
-            lo = mid
-    return lo
+    try:
+        if state.enthalpy == 0:
+            return -1.0
+        if simulate(state, 0.0)[2]:
+            return 0.0                        
+        lo = 0.0
+        hi = 1e-9
+        found = False
+        for _ in range(60):
+            if simulate(state, hi)[2]:
+                found = True
+                break
+            lo = hi
+            hi *= 4.0
+        if not found:
+            return -1.0
+        for _ in range(30):                  
+            mid = (lo + hi) / 2.0
+            if simulate(state, mid)[2]:
+                hi = mid
+            else:
+                lo = mid
+        return lo
+    
+    except Exception as e:
+        return error(state, inspect.currentframe().f_code.co_name, str(e))
 
 def text_graph(state, times, temps) -> str:
     """
     Function that creates a text graph of the function
     """
-    lim = effective_limit(state)
-    lo = min(min(temps), lim, state.t_room)
-    hi = max(max(temps), lim, state.t_room)
-    span = hi - lo
-    if span == 0:
-        span = 1.0
-    out = "Temperature vs time (bars scaled from " + str(round(lo, 1)) + " to " + str(round(hi, 1)) + " C)\n"
-    stride = max(1, len(times) // 25)
-    for i in range(0, len(times), stride):
-        bar = "#" * int(40 * (temps[i] - lo) / span)
-        out += "t=" + str(round(times[i], 1)) + " s  T=" + str(round(temps[i], 2)) + "  " + bar + "\n"
-    out += "Effective limit: " + str(round(lim, 2)) + " C"
-    return out
+    try:
+        lim = effective_limit(state)
+        lo = min(min(temps), lim, state.t_room)
+        hi = max(max(temps), lim, state.t_room)
+        span = hi - lo
+        if span == 0:
+            span = 1.0
+        out = "Temperature vs time (bars scaled from " + str(round(lo, 1)) + " to " + str(round(hi, 1)) + " C)\n"
+        stride = max(1, len(times) // 25)
+        for i in range(0, len(times), stride):
+            bar = "#" * int(40 * (temps[i] - lo) / span)
+            out += "t=" + str(round(times[i], 1)) + " s  T=" + str(round(temps[i], 2)) + "  " + bar + "\n"
+        out += "Effective limit: " + str(round(lim, 2)) + " C"
+        return out
+    
+    except Exception as e:
+        return error(state, inspect.currentframe().f_code.co_name, str(e))
 
 
 #PAGES: REACTOR INFO, RESULTS, GRAPH
@@ -701,11 +764,14 @@ def save_enthalpy(state : State, h : str = ""):
     Route called from the continue button on the enthalpy page that saves enthalpy data
     """
     try:
-        state.enthalpy = float(h)
-    except ValueError:
-        return Page(state, ["Enthalpy must be a number (kJ/mol of reaction as written, negative = exothermic).\n",
-                            Button("Back", "ent")])
-    return kinetics_data(state)
+        try:
+            state.enthalpy = float(h)
+        except ValueError:
+            return Page(state, ["Enthalpy must be a number (kJ/mol of reaction as written, negative = exothermic).\n",
+                                Button("Back", "ent")])
+        return kinetics_data(state)
+    except Exception as e:
+        return error(state, inspect.currentframe().f_code.co_name, str(e))
 
 
 @route
@@ -733,101 +799,109 @@ def reactor_save(state : State, volume : str = "", flow : str = "", troom : str 
     """
     Route function that saves reactor data inputted in reactor_info
     """
-
     try:
-        v = float(volume)
-        q = float(flow)
-        t_room = float(troom)
-        t_max = float(tmax)
-        t_min = float(tmin)
-        safety = float(sf)
-        rcp = float(rhocp) if rhocp.strip() != "" else 4184.0
-        ua_val = float(ua) if ua.strip() != "" else 0.0
-    except ValueError:
-        return Page(state, ["Every field must be a number (only the last two may be left blank).\n",
-                            Button("Back", "reactor_info")])
-    if v <= 0 or q <= 0 or rcp <= 0 or ua_val < 0 or safety < 1:
-        return Page(state,
-                    ["Volume, flow and rho*Cp must be positive, UA cannot be negative, and the factor of safety must be at least 1.\n",
-                            Button("Back", "reactor_info")])
-    if t_max <= t_min:
-        return Page(state, ["Maximum temperature must be greater than minimum temperature.\n",
-                            Button("Back", "reactor_info")])
-    state.reactor_volume = v
-    state.flow_q = q
-    state.t_room = t_room
-    state.t_max = t_max
-    state.t_min = t_min
-    state.safety_factor = safety
-    state.rho_cp = rcp
-    state.ua = ua_val
-    state.t_thresh = t_max if state.enthalpy < 0 else t_min
-    return results(state)
+        try:
+            v = float(volume)
+            q = float(flow)
+            t_room = float(troom)
+            t_max = float(tmax)
+            t_min = float(tmin)
+            safety = float(sf)
+            rcp = float(rhocp) if rhocp.strip() != "" else 4184.0
+            ua_val = float(ua) if ua.strip() != "" else 0.0
+        except ValueError:
+            return Page(state, ["Every field must be a number (only the last two may be left blank).\n",
+                                Button("Back", "reactor_info")])
+        if v <= 0 or q <= 0 or rcp <= 0 or ua_val < 0 or safety < 1:
+            return Page(state,
+                        ["Volume, flow and rho*Cp must be positive, UA cannot be negative, and the factor of safety must be at least 1.\n",
+                                Button("Back", "reactor_info")])
+        if t_max <= t_min:
+            return Page(state, ["Maximum temperature must be greater than minimum temperature.\n",
+                                Button("Back", "reactor_info")])
+        state.reactor_volume = v
+        state.flow_q = q
+        state.t_room = t_room
+        state.t_max = t_max
+        state.t_min = t_min
+        state.safety_factor = safety
+        state.rho_cp = rcp
+        state.ua = ua_val
+        state.t_thresh = t_max if state.enthalpy < 0 else t_min
+        return results(state)
+    except Exception as e:
+        return error(state, inspect.currentframe().f_code.co_name, str(e))
 
 @route
 def results(state : State):
     """
     Route function that constructs the results page
     """
-    if len(state.kin) == 0 or state.reaction_equation == "" or state.reactor_volume <= 0:
-        return Page(state, ["Some inputs are missing. Please start over.\n", Button("Restart", "restart")])
+    try:
+        if len(state.kin) == 0 or state.reaction_equation == "" or state.reactor_volume <= 0:
+            return Page(state, ["Some inputs are missing. Please start over.\n", Button("Restart", "restart")])
 
-    if state.enthalpy == 0:
-        return Page(state, ["The reaction has zero enthalpy, so it never heats or cools the reactor. There is no temperature limit on flow rates.\n",
-                            Button("Restart", "restart")])
+        if state.enthalpy == 0:
+            return Page(state, ["The reaction has zero enthalpy, so it never heats or cools the reactor. There is no temperature limit on flow rates.\n",
+                                Button("Restart", "restart")])
 
-    kind = "exothermic (limit is the MAXIMUM temperature)" if state.enthalpy < 0 else "endothermic (limit is the MINIMUM temperature)"
-    state.max_s = find_max_s(state)
-    lim = effective_limit(state)
+        kind = "exothermic (limit is the MAXIMUM temperature)" if state.enthalpy < 0 else "endothermic (limit is the MINIMUM temperature)"
+        state.max_s = find_max_s(state)
+        lim = effective_limit(state)
 
-    content = ["Results\n\n",
-               "Reaction: " + state.reaction_equation + "\n",
-               "Type: " + kind + "\n",
-               "Threshold from reactor info: " + str(state.t_thresh) + " C\n",
-               "Effective limit with factor of safety " + str(state.safety_factor) + ": " + str(round(lim, 2)) + " C\n\n"]
+        content = ["Results\n\n",
+                   "Reaction: " + state.reaction_equation + "\n",
+                   "Type: " + kind + "\n",
+                   "Threshold from reactor info: " + str(state.t_thresh) + " C\n",
+                   "Effective limit with factor of safety " + str(state.safety_factor) + ": " + str(round(lim, 2)) + " C\n\n"]
 
-    if state.max_s < 0:
-        content.append("No flow rate in the tested range reaches the limit, so this reactor is not temperature-limited.\n\n")
-    elif state.max_s == 0:
-        content.append("The limit is already violated with no reaction (room temperature is outside the allowed range after the factor of safety). Flow rates of 0 are the only safe choice.\n\n")
-    else:
-        content.append("Maximum safe feed rates:\n")
-        for formula, nu, order in reactant_data(state):
-            content.append(formula + ": " + print_scientific(nu * state.max_s, 4) + " mol/s\n")
-        times, temps, hit = simulate(state, state.max_s, 500, False)
-        if state.enthalpy < 0:
-            content.append("\nPeak reactor temperature at these rates: " + str(round(max(temps), 2)) + " C\n\n")
+        if state.max_s < 0:
+            content.append("No flow rate in the tested range reaches the limit, so this reactor is not temperature-limited.\n\n")
+        elif state.max_s == 0:
+            content.append("The limit is already violated with no reaction (room temperature is outside the allowed range after the factor of safety). Flow rates of 0 are the only safe choice.\n\n")
         else:
-            content.append("\nLowest reactor temperature at these rates: " + str(round(min(temps), 2)) + " C\n\n")
-    content.append(Button("View Graph", "graph"))
-    content.append(Button("Restart", "restart"))
-    return Page(state, content)
+            content.append("Maximum safe feed rates:\n")
+            for formula, nu, order in reactant_data(state):
+                content.append(formula + ": " + print_scientific(nu * state.max_s, 4) + " mol/s\n")
+            times, temps, hit = simulate(state, state.max_s, 500, False)
+            if state.enthalpy < 0:
+                content.append("\nPeak reactor temperature at these rates: " + str(round(max(temps), 2)) + " C\n\n")
+            else:
+                content.append("\nLowest reactor temperature at these rates: " + str(round(min(temps), 2)) + " C\n\n")
+        content.append(Button("View Graph", "graph"))
+        content.append(Button("Restart", "restart"))
+        return Page(state, content)
+
+    except Exception as e:
+        return error(state, inspect.currentframe().f_code.co_name, str(e))
 
 @route
 def graph(state : State):
     """
     Route function that constructs the graph page
     """
-    
-    if len(state.kin) == 0 or state.reactor_volume <= 0 or state.enthalpy == 0:
-        return Page(state, ["Nothing to graph yet.\n", Button("Restart", "restart")])
-    s = max(state.max_s, 0.0)
-    times, temps, hit = simulate(state, s, 500, False)
-    lim = effective_limit(state)
-    buttons = ["\n", Button("Back to Results", "results"), Button("Restart", "restart")]
     try:
-        import matplotlib.pyplot as plt
-        plt.figure()
-        plt.plot(times, temps, label="Reactor temperature")
-        plt.axhline(lim, color="red", linestyle="--", label="Effective limit")
-        plt.xlabel("Time (s)")
-        plt.ylabel("Temperature (C)")
-        plt.title("Reactor temperature at maximum safe flow")
-        plt.legend()
-        return Page(state, ["Graph of reactor temperature over time (flow rates from Results).\n", MatPlotLibPlot()] + buttons)
-    except Exception:
-        return Page(state, ["Graph of reactor temperature over time (flow rates from Results).\n",
-                            text_graph(state, times, temps)] + buttons)
+        if len(state.kin) == 0 or state.reactor_volume <= 0 or state.enthalpy == 0:
+            return Page(state, ["Nothing to graph yet.\n", Button("Restart", "restart")])
+        s = max(state.max_s, 0.0)
+        times, temps, hit = simulate(state, s, 500, False)
+        lim = effective_limit(state)
+        buttons = ["\n", Button("Back to Results", "results"), Button("Restart", "restart")]
+        try:
+            import matplotlib.pyplot as plt
+            plt.figure()
+            plt.plot(times, temps, label="Reactor temperature")
+            plt.axhline(lim, color="red", linestyle="--", label="Effective limit")
+            plt.xlabel("Time (s)")
+            plt.ylabel("Temperature (C)")
+            plt.title("Reactor temperature at maximum safe flow")
+            plt.legend()
+            return Page(state, ["Graph of reactor temperature over time (flow rates from Results).\n", MatPlotLibPlot()] + buttons)
+        except Exception:
+            return Page(state, ["Graph of reactor temperature over time (flow rates from Results).\n",
+                                text_graph(state, times, temps)] + buttons)
+    except Exception as e:
+        return error(state, inspect.currentframe().f_code.co_name, str(e))
 
 @route
 def restart(state : State):
